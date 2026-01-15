@@ -7,6 +7,7 @@ const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 
 // GHL API v2 base URL for Private Integration Tokens
 const GHL_API_URL = "https://services.leadconnectorhq.com";
+const GHL_UPSERT_URL = `${GHL_API_URL}/contacts/upsert`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,35 +26,31 @@ export async function POST(request: NextRequest) {
     console.log("GHL API Key starts with:", GHL_API_KEY.substring(0, 10));
     console.log("GHL Location ID:", GHL_LOCATION_ID);
 
-    // Create new contact using GHL API v2
+    // Create/upsert contact using GHL API v2 upsert endpoint
     if (action === "create") {
-      // Only include required fields for v2 API
       const contactPayload = {
+        locationId: GHL_LOCATION_ID,
         firstName: data.firstName || "Lead",
         lastName: data.lastName || "HomeSaleCalculator",
         email: data.email || `lead${Date.now()}@homesalecalculator.temp`,
         address1: data.address || "",
-        locationId: GHL_LOCATION_ID,
+        tags: ["Home Sale Calculator"],
       };
 
-      console.log("Creating GHL contact with payload:", JSON.stringify(contactPayload));
+      console.log("Upserting GHL contact with payload:", JSON.stringify(contactPayload));
 
-      const response = await fetch(
-        `${GHL_API_URL}/contacts/`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${GHL_API_KEY}`,
-            "Version": "2021-07-28",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(contactPayload),
-        }
-      );
+      const response = await fetch(GHL_UPSERT_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GHL_API_KEY}`,
+          "Version": "2021-07-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contactPayload),
+      });
 
       const responseText = await response.text();
-      console.log("GHL create response:", response.status, responseText);
+      console.log("GHL upsert response:", response.status, responseText);
       
       let result;
       try {
@@ -64,7 +61,7 @@ export async function POST(request: NextRequest) {
       
       if (!response.ok) {
         return NextResponse.json(
-          { error: "Failed to create contact", details: result, success: false },
+          { error: "Failed to upsert contact", details: result, success: false },
           { status: response.status }
         );
       }
@@ -75,14 +72,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Update existing contact
-    if (action === "update" && contactId) {
-      const updatePayload: Record<string, unknown> = {};
+    // Update existing contact using upsert (matched by phone or email)
+    if (action === "update") {
+      const updatePayload: Record<string, unknown> = {
+        locationId: GHL_LOCATION_ID,
+      };
       
       if (data.firstName) updatePayload.firstName = data.firstName;
       if (data.lastName) updatePayload.lastName = data.lastName;
+      if (data.name) updatePayload.name = data.name;
       if (data.email) updatePayload.email = data.email;
       if (data.phone) updatePayload.phone = data.phone;
+      if (data.address) updatePayload.address1 = data.address;
       
       // Add zestimate as custom field
       if (data.zestimate) {
@@ -93,25 +94,31 @@ export async function POST(request: NextRequest) {
           }
         ];
       }
+      
+      // Add tags
+      updatePayload.tags = ["Home Sale Calculator", "Lead Complete"];
 
-      console.log("Updating GHL contact:", contactId, updatePayload);
+      console.log("Upserting GHL contact (update):", JSON.stringify(updatePayload));
 
-      const response = await fetch(
-        `${GHL_API_URL}/contacts/${contactId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Authorization": `Bearer ${GHL_API_KEY}`,
-            "Version": "2021-07-28",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(updatePayload),
-        }
-      );
+      const response = await fetch(GHL_UPSERT_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GHL_API_KEY}`,
+          "Version": "2021-07-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatePayload),
+      });
 
-      const result = await response.json();
-      console.log("GHL update response:", response.status, result);
+      const responseText = await response.text();
+      console.log("GHL update response:", response.status, responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = { raw: responseText };
+      }
 
       if (!response.ok) {
         return NextResponse.json(
