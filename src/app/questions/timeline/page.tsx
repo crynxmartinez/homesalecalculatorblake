@@ -24,13 +24,13 @@ export default function TimelineQuestion() {
     // Fetch Zestimate before going to contact page
     try {
       const response = await fetch(
-        `https://zillow-zestimate.p.rapidapi.com/zestimate?address=${encodeURIComponent(
+        `https://private-zillow.p.rapidapi.com/pro/byaddress?propertyaddress=${encodeURIComponent(
           formData.address
         )}`,
         {
           method: "GET",
           headers: {
-            "x-rapidapi-host": "zillow-zestimate.p.rapidapi.com",
+            "x-rapidapi-host": "private-zillow.p.rapidapi.com",
             "x-rapidapi-key": "047a4435bamsh9b85f291b0421d6p130f1cjsn2b6a05a025b0",
           },
         }
@@ -38,16 +38,20 @@ export default function TimelineQuestion() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log("Zestimate response:", data);
+        console.log("Zillow response:", data);
         
-        if (data.zestimate) {
-          updateFormData("zestimate", data.zestimate);
+        // Extract zestimate from response - check common field names
+        const zestimate = data.zestimate || data.Zestimate || data.price || data.estimatedValue;
+        const rentZestimate = data.rentZestimate || data.rentEstimate || data.rent_zestimate;
+        
+        if (zestimate) {
+          updateFormData("zestimate", zestimate);
         }
-        if (data.rentZestimate || data.rent_zestimate) {
-          updateFormData("rentZestimate", data.rentZestimate || data.rent_zestimate);
+        if (rentZestimate) {
+          updateFormData("rentZestimate", rentZestimate);
         }
       } else {
-        console.error("Zestimate API error:", response.status);
+        console.error("Zillow API error:", response.status);
       }
     } catch (error) {
       console.error("Failed to fetch zestimate:", error);
