@@ -10,8 +10,28 @@ export default function Home() {
   const router = useRouter();
   const { formData, updateFormData } = useFormContext();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (formData.address) {
+      // Send address to GHL with pseudo contact
+      try {
+        const response = await fetch("/api/ghl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "create",
+            address: formData.address,
+            firstName: "Lead",
+            lastName: "HomeSaleCalculator",
+          }),
+        });
+        const data = await response.json();
+        if (data.contactId) {
+          updateFormData("ghlContactId", data.contactId);
+        }
+      } catch (error) {
+        console.error("Failed to create GHL contact:", error);
+      }
+      
       router.push("/questions/owner");
     }
   };

@@ -10,6 +10,11 @@ interface FormData {
   sellTimeline: string;
   zestimate: number | null;
   rentZestimate: number | null;
+  ghlContactId: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
 }
 
 interface FormContextType {
@@ -26,6 +31,11 @@ const initialFormData: FormData = {
   sellTimeline: "",
   zestimate: null,
   rentZestimate: null,
+  ghlContactId: null,
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
 };
 
 const FormContext = createContext<FormContextType | undefined>(undefined);

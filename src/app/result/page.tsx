@@ -1,62 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useFormContext } from "@/context/FormContext";
 
 export default function ResultPage() {
   const router = useRouter();
-  const { formData, updateFormData } = useFormContext();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { formData } = useFormContext();
 
   useEffect(() => {
     if (!formData.address) {
       router.push("/");
       return;
     }
-
-    const fetchZestimate = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(
-          `https://your-home-value-estimator.p.rapidapi.com/zestimate?address=${encodeURIComponent(
-            formData.address
-          )}&includeRentZestimate=true&includeZpid=true`,
-          {
-            method: "GET",
-            headers: {
-              "x-rapidapi-key": "047a4435bamsh9b85f291b0421d6p130f1cjsn2b6a05a025b0",
-              "x-rapidapi-host": "your-home-value-estimator.p.rapidapi.com",
-            },
-          }
-        );
-
-        const data = await response.json();
-
-        if (data.zestimate) {
-          updateFormData("zestimate", data.zestimate);
-        }
-        if (data.rentZestimate) {
-          updateFormData("rentZestimate", data.rentZestimate);
-        }
-
-        if (!data.zestimate) {
-          setError("Unable to find an estimate for this address. Please try a different address.");
-        }
-      } catch (err) {
-        console.error("Error fetching zestimate:", err);
-        setError("Failed to fetch home value estimate. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchZestimate();
-  }, [formData.address, router, updateFormData]);
+  }, [formData.address, router]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -66,19 +24,7 @@ export default function ResultPage() {
     }).format(value);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-700">Calculating your home value...</p>
-          <p className="text-gray-500 mt-2">{formData.address}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
+  if (!formData.zestimate) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -98,7 +44,7 @@ export default function ResultPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">Unable to find an estimate for this address. Please try a different address.</p>
           <Link
             href="/"
             className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
