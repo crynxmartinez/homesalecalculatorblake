@@ -24,13 +24,13 @@ export default function TimelineQuestion() {
     // Fetch Zestimate before going to contact page
     try {
       const response = await fetch(
-        `https://zillow-zestimate1.p.rapidapi.com/zestimate?address=${encodeURIComponent(
+        `https://zillow-com1.p.rapidapi.com/property?address=${encodeURIComponent(
           formData.address
         )}`,
         {
           method: "GET",
           headers: {
-            "x-rapidapi-host": "zillow-zestimate1.p.rapidapi.com",
+            "x-rapidapi-host": "zillow-com1.p.rapidapi.com",
             "x-rapidapi-key": "047a4435bamsh9b85f291b0421d6p130f1cjsn2b6a05a025b0",
           },
         }
@@ -40,8 +40,8 @@ export default function TimelineQuestion() {
       if (data.zestimate) {
         updateFormData("zestimate", data.zestimate);
       }
-      if (data.rent_zestimate) {
-        updateFormData("rentZestimate", data.rent_zestimate);
+      if (data.rentZestimate) {
+        updateFormData("rentZestimate", data.rentZestimate);
       }
     } catch (error) {
       console.error("Failed to fetch zestimate:", error);
