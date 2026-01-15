@@ -5,6 +5,9 @@ export const runtime = "nodejs";
 const GHL_API_KEY = process.env.GHL_API_KEY;
 const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 
+// GHL API v2 base URL for Private Integration Tokens
+const GHL_API_URL = "https://services.leadconnectorhq.com";
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new contact using GHL API v1 (simpler format)
+    // Create new contact using GHL API v2
     if (action === "create") {
       const contactPayload = {
         firstName: data.firstName || "Lead",
@@ -27,16 +30,18 @@ export async function POST(request: NextRequest) {
         address1: data.address,
         tags: ["Home Sale Calculator"],
         source: "Home Sale Calculator",
+        locationId: GHL_LOCATION_ID,
       };
 
       console.log("Creating GHL contact:", contactPayload);
 
       const response = await fetch(
-        `https://rest.gohighlevel.com/v1/contacts/`,
+        `${GHL_API_URL}/contacts/`,
         {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${GHL_API_KEY}`,
+            "Version": "2021-07-28",
             "Content-Type": "application/json",
           },
           body: JSON.stringify(contactPayload),
@@ -70,19 +75,23 @@ export async function POST(request: NextRequest) {
       
       // Add zestimate as custom field
       if (data.zestimate) {
-        updatePayload.customField = {
-          home_sale_calculator_zestimate: data.zestimate,
-        };
+        updatePayload.customFields = [
+          {
+            id: "home_sale_calculator_zestimate",
+            field_value: data.zestimate,
+          }
+        ];
       }
 
       console.log("Updating GHL contact:", contactId, updatePayload);
 
       const response = await fetch(
-        `https://rest.gohighlevel.com/v1/contacts/${contactId}`,
+        `${GHL_API_URL}/contacts/${contactId}`,
         {
           method: "PUT",
           headers: {
             "Authorization": `Bearer ${GHL_API_KEY}`,
+            "Version": "2021-07-28",
             "Content-Type": "application/json",
           },
           body: JSON.stringify(updatePayload),

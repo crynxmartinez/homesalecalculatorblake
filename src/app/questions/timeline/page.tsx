@@ -40,9 +40,12 @@ export default function TimelineQuestion() {
         const data = await response.json();
         console.log("Zillow response:", data);
         
-        // Extract zestimate from response - check common field names
-        const zestimate = data.zestimate || data.Zestimate || data.price || data.estimatedValue;
-        const rentZestimate = data.rentZestimate || data.rentEstimate || data.rent_zestimate;
+        // Extract zestimate from propertyDetails
+        const details = data.propertyDetails || data;
+        const zestimate = details.zestimate || details.Zestimate || details.price || data.zestimate;
+        const rentZestimate = details.rentZestimate || details.rentEstimate || details.rent_zestimate;
+        
+        console.log("Extracted zestimate:", zestimate, "rentZestimate:", rentZestimate);
         
         if (zestimate) {
           updateFormData("zestimate", zestimate);
