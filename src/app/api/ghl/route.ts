@@ -4,18 +4,6 @@ export const runtime = "nodejs";
 
 const GHL_API_KEY = process.env.GHL_API_KEY;
 const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
-const GHL_API_URL = "https://services.leadconnectorhq.com/contacts/";
-
-interface ContactData {
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  address1?: string;
-  customFields?: Array<{ key: string; field_value: string }>;
-  tags?: string[];
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,97 +11,90 @@ export async function POST(request: NextRequest) {
     const { action, contactId, ...data } = body;
 
     if (!GHL_API_KEY || !GHL_LOCATION_ID) {
-      console.error("Missing GHL credentials");
+      console.error("Missing GHL credentials - API_KEY:", !!GHL_API_KEY, "LOCATION_ID:", !!GHL_LOCATION_ID);
       return NextResponse.json(
-        { error: "Server configuration error" },
+        { error: "Server configuration error", success: false },
         { status: 500 }
       );
     }
 
-    // Create new contact
+    // Create new contact using GHL API v1 (simpler format)
     if (action === "create") {
-      const contactData: ContactData = {
+      const contactPayload = {
         firstName: data.firstName || "Lead",
         lastName: data.lastName || "HomeSaleCalculator",
         email: data.email || `lead-${Date.now()}@homesalecalculator.temp`,
         address1: data.address,
         tags: ["Home Sale Calculator"],
+        source: "Home Sale Calculator",
       };
 
-      const response = await fetch(GHL_API_URL, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${GHL_API_KEY}`,
-          "Version": "2021-07-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...contactData,
-          locationId: GHL_LOCATION_ID,
-        }),
-      });
+      console.log("Creating GHL contact:", contactPayload);
+
+      const response = await fetch(
+        `https://rest.gohighlevel.com/v1/contacts/`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${GHL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contactPayload),
+        }
+      );
 
       const result = await response.json();
+      console.log("GHL create response:", response.status, result);
       
       if (!response.ok) {
-        console.error("GHL create error:", result);
         return NextResponse.json(
-          { error: "Failed to create contact", details: result },
+          { error: "Failed to create contact", details: result, success: false },
           { status: response.status }
         );
       }
 
       return NextResponse.json({ 
         success: true, 
-        contactId: result.contact?.id 
+        contactId: result.contact?.id || result.id
       });
     }
 
     // Update existing contact
     if (action === "update" && contactId) {
-      const customFields: Array<{ key: string; field_value: string }> = [];
+      const updatePayload: Record<string, unknown> = {};
       
+      if (data.firstName) updatePayload.firstName = data.firstName;
+      if (data.lastName) updatePayload.lastName = data.lastName;
+      if (data.email) updatePayload.email = data.email;
+      if (data.phone) updatePayload.phone = data.phone;
+      
+      // Add zestimate as custom field
       if (data.zestimate) {
-        customFields.push({
-          key: "home_sale_calculator_zestimate",
-          field_value: data.zestimate,
-        });
+        updatePayload.customField = {
+          home_sale_calculator_zestimate: data.zestimate,
+        };
       }
 
-      const updateData: ContactData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phone: data.phone,
-      };
+      console.log("Updating GHL contact:", contactId, updatePayload);
 
-      // Remove undefined values
-      Object.keys(updateData).forEach((key) => {
-        if (updateData[key as keyof ContactData] === undefined) {
-          delete updateData[key as keyof ContactData];
+      const response = await fetch(
+        `https://rest.gohighlevel.com/v1/contacts/${contactId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${GHL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatePayload),
         }
-      });
-
-      if (customFields.length > 0) {
-        updateData.customFields = customFields;
-      }
-
-      const response = await fetch(`${GHL_API_URL}${contactId}`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${GHL_API_KEY}`,
-          "Version": "2021-07-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updateData),
-      });
+      );
 
       const result = await response.json();
+      console.log("GHL update response:", response.status, result);
 
       if (!response.ok) {
-        console.error("GHL update error:", result);
         return NextResponse.json(
-          { error: "Failed to update contact", details: result },
+          { error: "Failed to update contact", details: result, success: false },
           { status: response.status }
         );
       }
@@ -122,13 +103,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Invalid action" },
+      { error: "Invalid action", success: false },
       { status: 400 }
     );
   } catch (error) {
     console.error("GHL API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", success: false },
       { status: 500 }
     );
   }
