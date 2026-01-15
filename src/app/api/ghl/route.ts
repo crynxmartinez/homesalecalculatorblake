@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log first 10 chars of API key for debugging (safe to log partial)
+    console.log("GHL API Key starts with:", GHL_API_KEY.substring(0, 10));
+    console.log("GHL Location ID:", GHL_LOCATION_ID);
+
     // Create new contact using GHL API v2
     if (action === "create") {
       // Only include required fields for v2 API
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
         {
           method: "POST",
           headers: {
-            "Authorization": GHL_API_KEY as string,
+            "Authorization": `Bearer ${GHL_API_KEY}`,
             "Version": "2021-07-28",
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -97,7 +101,7 @@ export async function POST(request: NextRequest) {
         {
           method: "PUT",
           headers: {
-            "Authorization": GHL_API_KEY as string,
+            "Authorization": `Bearer ${GHL_API_KEY}`,
             "Version": "2021-07-28",
             "Content-Type": "application/json",
             "Accept": "application/json",
