@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${GHL_API_KEY}`,
+            "Authorization": GHL_API_KEY as string,
             "Version": "2021-07-28",
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -97,9 +97,10 @@ export async function POST(request: NextRequest) {
         {
           method: "PUT",
           headers: {
-            "Authorization": `Bearer ${GHL_API_KEY}`,
+            "Authorization": GHL_API_KEY as string,
             "Version": "2021-07-28",
             "Content-Type": "application/json",
+            "Accept": "application/json",
           },
           body: JSON.stringify(updatePayload),
         }
