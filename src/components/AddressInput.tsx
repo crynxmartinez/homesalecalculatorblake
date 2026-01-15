@@ -17,6 +17,7 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSelected, setHasSelected] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +39,12 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
 
   useEffect(() => {
     const fetchSuggestions = async () => {
+      // Skip fetching if user just selected an address
+      if (hasSelected) {
+        setHasSelected(false);
+        return;
+      }
+
       if (value.length < 5) {
         setSuggestions([]);
         return;
@@ -102,11 +109,13 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
 
     const debounceTimer = setTimeout(fetchSuggestions, 500);
     return () => clearTimeout(debounceTimer);
-  }, [value]);
+  }, [value, hasSelected]);
 
   const handleSelect = (suggestion: Suggestion) => {
-    onChange(suggestion.description);
+    setHasSelected(true);
+    setSuggestions([]);
     setShowSuggestions(false);
+    onChange(suggestion.description);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
