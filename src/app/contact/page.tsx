@@ -29,25 +29,31 @@ export default function ContactPage() {
 
     try {
       // Update GHL contact with real info and zestimate
-      if (formData.ghlContactId) {
-        await fetch("/api/ghl", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "update",
-            contactId: formData.ghlContactId,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email || undefined,
-            phone: formData.phone || undefined,
-            zestimate: formData.zestimate?.toString() || "",
-          }),
-        });
-      }
+      console.log("📤 Updating GHL contact with user info...");
+      console.log("Contact ID:", formData.ghlContactId);
+      console.log("Zestimate:", formData.zestimate);
+      
+      const response = await fetch("/api/ghl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          contactId: formData.ghlContactId,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email || undefined,
+          phone: formData.phone || undefined,
+          address: formData.address,
+          zestimate: formData.zestimate?.toString() || "",
+        }),
+      });
+      
+      const data = await response.json();
+      console.log("📥 GHL update response:", data);
       
       router.push("/result");
     } catch (error) {
-      console.error("Failed to update contact:", error);
+      console.error("❌ Failed to update contact:", error);
       // Still proceed to results even if GHL update fails
       router.push("/result");
     }

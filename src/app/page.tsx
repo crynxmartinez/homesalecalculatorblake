@@ -13,6 +13,7 @@ export default function Home() {
   const handleSubmit = async () => {
     if (formData.address) {
       // Send address to GHL with pseudo contact
+      console.log("📤 Sending address to GHL:", formData.address);
       try {
         const response = await fetch("/api/ghl", {
           method: "POST",
@@ -25,11 +26,13 @@ export default function Home() {
           }),
         });
         const data = await response.json();
+        console.log("📥 GHL response:", data);
         if (data.contactId) {
+          console.log("✅ GHL contact created:", data.contactId);
           updateFormData("ghlContactId", data.contactId);
         }
       } catch (error) {
-        console.error("Failed to create GHL contact:", error);
+        console.error("❌ Failed to create GHL contact:", error);
       }
       
       router.push("/questions/owner");
