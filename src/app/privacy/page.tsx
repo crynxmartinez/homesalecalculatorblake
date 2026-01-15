@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
         <p className="text-gray-500 mb-8">Effective Date: June 23rd, 2025</p>
 
-        <div className="prose prose-gray max-w-none">
+        <div className="max-w-none text-gray-700">
           <p className="mb-4">
             <strong>Website:</strong> HomeSaleCalculator.com
             <br />
