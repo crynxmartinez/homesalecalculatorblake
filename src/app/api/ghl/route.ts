@@ -23,17 +23,16 @@ export async function POST(request: NextRequest) {
 
     // Create new contact using GHL API v2
     if (action === "create") {
+      // Only include required fields for v2 API
       const contactPayload = {
         firstName: data.firstName || "Lead",
         lastName: data.lastName || "HomeSaleCalculator",
-        email: data.email || `lead-${Date.now()}@homesalecalculator.temp`,
-        address1: data.address,
-        tags: ["Home Sale Calculator"],
-        source: "Home Sale Calculator",
+        email: data.email || `lead${Date.now()}@homesalecalculator.temp`,
+        address1: data.address || "",
         locationId: GHL_LOCATION_ID,
       };
 
-      console.log("Creating GHL contact:", contactPayload);
+      console.log("Creating GHL contact with payload:", JSON.stringify(contactPayload));
 
       const response = await fetch(
         `${GHL_API_URL}/contacts/`,
@@ -43,13 +42,21 @@ export async function POST(request: NextRequest) {
             "Authorization": `Bearer ${GHL_API_KEY}`,
             "Version": "2021-07-28",
             "Content-Type": "application/json",
+            "Accept": "application/json",
           },
           body: JSON.stringify(contactPayload),
         }
       );
 
-      const result = await response.json();
-      console.log("GHL create response:", response.status, result);
+      const responseText = await response.text();
+      console.log("GHL create response:", response.status, responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = { raw: responseText };
+      }
       
       if (!response.ok) {
         return NextResponse.json(
