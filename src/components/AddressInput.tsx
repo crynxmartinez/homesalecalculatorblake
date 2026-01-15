@@ -17,9 +17,10 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasSelected, setHasSelected] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const justSelectedRef = useRef(false);
+  const selectedValueRef = useRef("");
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -38,18 +39,24 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
   }, []);
 
   useEffect(() => {
+    // Skip if user just selected an address (value matches what was selected)
+    if (justSelectedRef.current && value === selectedValueRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
+
+    // Reset the flag if user starts typing something different
+    if (value !== selectedValueRef.current) {
+      selectedValueRef.current = "";
+    }
+
+    if (value.length < 5) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     const fetchSuggestions = async () => {
-      // Skip fetching if user just selected an address
-      if (hasSelected) {
-        setHasSelected(false);
-        return;
-      }
-
-      if (value.length < 5) {
-        setSuggestions([]);
-        return;
-      }
-
       setIsLoading(true);
       try {
         // Using Nominatim (OpenStreetMap) - free, no API key required
@@ -109,10 +116,11 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
 
     const debounceTimer = setTimeout(fetchSuggestions, 500);
     return () => clearTimeout(debounceTimer);
-  }, [value, hasSelected]);
+  }, [value]);
 
   const handleSelect = (suggestion: Suggestion) => {
-    setHasSelected(true);
+    justSelectedRef.current = true;
+    selectedValueRef.current = suggestion.description;
     setSuggestions([]);
     setShowSuggestions(false);
     onChange(suggestion.description);
@@ -134,7 +142,12 @@ export default function AddressInput({ value, onChange, onSubmit }: AddressInput
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+          onFocus={() => {
+            // Only show suggestions if we have them AND user hasn't just selected one
+            if (suggestions.length > 0 && !selectedValueRef.current) {
+              setShowSuggestions(true);
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Start typing your address..."
           className="flex-1 px-4 py-4 text-gray-700 text-base focus:outline-none"
