@@ -28,17 +28,18 @@ export default function ContactPage() {
     setError("");
 
     try {
-      // Update GHL contact with real info and zestimate
-      console.log("📤 Updating GHL contact with user info...");
-      console.log("Contact ID:", formData.ghlContactId);
+      // Create FULL LEAD in GHL with all user info
+      console.log("📤 Creating FULL LEAD in GHL...");
+      console.log("Name:", formData.firstName, formData.lastName);
+      console.log("Phone:", formData.phone);
+      console.log("Email:", formData.email);
       console.log("Zestimate:", formData.zestimate);
       
       const response = await fetch("/api/ghl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "update",
-          contactId: formData.ghlContactId,
+          action: "complete",
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email || undefined,
@@ -49,12 +50,12 @@ export default function ContactPage() {
       });
       
       const data = await response.json();
-      console.log("📥 GHL update response:", data);
+      console.log("📥 GHL full lead response:", data);
       
       router.push("/result");
     } catch (error) {
-      console.error("❌ Failed to update contact:", error);
-      // Still proceed to results even if GHL update fails
+      console.error("❌ Failed to create full lead:", error);
+      // Still proceed to results even if GHL fails
       router.push("/result");
     }
   };

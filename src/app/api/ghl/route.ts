@@ -9,8 +9,7 @@ const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 const GHL_API_URL = "https://services.leadconnectorhq.com";
 const GHL_UPSERT_URL = `${GHL_API_URL}/contacts/upsert`;
 
-// Generate deterministic placeholder email from address
-// Same address = same email = can update the same contact
+// Generate deterministic placeholder email from address for partial leads
 function hashAddress(address: string): number {
   const normalized = address.toLowerCase().trim().replace(/\s+/g, " ");
   let hash = 0;
@@ -24,6 +23,31 @@ function hashAddress(address: string): number {
 function generatePlaceholderEmail(address: string): string {
   const hash = hashAddress(address);
   return `partial_${hash}@placeholder.lead`;
+}
+
+// Helper to make GHL API call
+async function upsertContact(payload: Record<string, unknown>) {
+  const response = await fetch(GHL_UPSERT_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GHL_API_KEY}`,
+      "Version": "2021-07-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const responseText = await response.text();
+  console.log("GHL upsert response:", response.status, responseText);
+
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    result = { raw: responseText };
+  }
+
+  return { ok: response.ok, status: response.status, result };
 }
 
 export async function POST(request: NextRequest) {
@@ -43,51 +67,30 @@ export async function POST(request: NextRequest) {
     console.log("GHL API Key starts with:", GHL_API_KEY.substring(0, 10));
     console.log("GHL Location ID:", GHL_LOCATION_ID);
 
-    // Create/upsert contact using GHL API v2 upsert endpoint
+    // ACTION: CREATE - Partial Lead (address only)
+    // Called when user enters address on home page
     if (action === "create") {
-      // Use deterministic placeholder email based on address hash
-      // This allows us to update the same contact later
       const placeholderEmail = data.address 
         ? generatePlaceholderEmail(data.address) 
         : `lead${Date.now()}@homesalecalculator.temp`;
       
-      const contactPayload = {
+      const payload = {
         locationId: GHL_LOCATION_ID,
-        firstName: data.firstName || "Lead",
-        lastName: data.lastName || "HomeSaleCalculator",
+        firstName: "Lead",
+        lastName: "HomeSaleCalculator",
         email: placeholderEmail,
         address1: data.address || "",
         tags: ["Home Sale Calculator", "Partial Lead"],
       };
       
-      console.log("Placeholder email for address:", placeholderEmail);
+      console.log("Creating PARTIAL LEAD:", JSON.stringify(payload));
 
-      console.log("Upserting GHL contact with payload:", JSON.stringify(contactPayload));
-
-      const response = await fetch(GHL_UPSERT_URL, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${GHL_API_KEY}`,
-          "Version": "2021-07-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(contactPayload),
-      });
-
-      const responseText = await response.text();
-      console.log("GHL upsert response:", response.status, responseText);
+      const { ok, status, result } = await upsertContact(payload);
       
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch {
-        result = { raw: responseText };
-      }
-      
-      if (!response.ok) {
+      if (!ok) {
         return NextResponse.json(
-          { error: "Failed to upsert contact", details: result, success: false },
-          { status: response.status }
+          { error: "Failed to create partial lead", details: result, success: false },
+          { status }
         );
       }
 
@@ -97,35 +100,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Update existing contact using two-step upsert approach
-    // Step 1: Match by placeholder email, add name/phone
-    // Step 2: Match by phone, replace placeholder email with real email
-    if (action === "update") {
-      if (!data.address) {
+    // ACTION: COMPLETE - Full Lead (all info)
+    // Called when user completes contact form with name/phone/email
+    if (action === "complete") {
+      // Validate required fields
+      if (!data.firstName) {
         return NextResponse.json(
-          { error: "Address required for update", success: false },
+          { error: "First name required", success: false },
           { status: 400 }
         );
       }
-      
-      const placeholderEmail = generatePlaceholderEmail(data.address);
-      console.log("Update - using placeholder email:", placeholderEmail);
-      
-      // Step 1: Update partial lead (matched by placeholder email) with name, phone
-      const step1Payload: Record<string, unknown> = {
+
+      const payload: Record<string, unknown> = {
         locationId: GHL_LOCATION_ID,
-        email: placeholderEmail,
-        address1: data.address,
-        tags: ["Home Sale Calculator", "Lead Complete"],
+        firstName: data.firstName,
+        lastName: data.lastName || "",
+        address1: data.address || "",
+        tags: ["Home Sale Calculator", "Full Lead"],
       };
       
-      if (data.firstName) step1Payload.firstName = data.firstName;
-      if (data.lastName) step1Payload.lastName = data.lastName;
-      if (data.phone) step1Payload.phone = data.phone;
+      // Use real email if provided, otherwise generate unique one
+      if (data.email) {
+        payload.email = data.email;
+      } else {
+        payload.email = `lead_${Date.now()}@homesalecalculator.noemail`;
+      }
+      
+      // Add phone if provided
+      if (data.phone) {
+        payload.phone = data.phone;
+      }
       
       // Add zestimate as custom field
       if (data.zestimate) {
-        step1Payload.customFields = [
+        payload.customFields = [
           {
             id: "home_sale_calculator_zestimate",
             field_value: data.zestimate,
@@ -133,44 +141,15 @@ export async function POST(request: NextRequest) {
         ];
       }
 
-      console.log("Step 1 - Updating with name/phone:", JSON.stringify(step1Payload));
+      console.log("Creating FULL LEAD:", JSON.stringify(payload));
 
-      const response1 = await fetch(GHL_UPSERT_URL, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${GHL_API_KEY}`,
-          "Version": "2021-07-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(step1Payload),
-      });
-
-      const responseText1 = await response1.text();
-      console.log("Step 1 response:", response1.status, responseText1);
+      const { ok, status, result } = await upsertContact(payload);
       
-      // Step 2: If user provided real email, update by phone to replace placeholder email
-      if (data.email && data.phone) {
-        const step2Payload = {
-          locationId: GHL_LOCATION_ID,
-          phone: data.phone,
-          email: data.email,
-          tags: ["Home Sale Calculator", "Lead Complete"],
-        };
-        
-        console.log("Step 2 - Replacing placeholder email with real email:", JSON.stringify(step2Payload));
-        
-        const response2 = await fetch(GHL_UPSERT_URL, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${GHL_API_KEY}`,
-            "Version": "2021-07-28",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(step2Payload),
-        });
-        
-        const responseText2 = await response2.text();
-        console.log("Step 2 response:", response2.status, responseText2);
+      if (!ok) {
+        return NextResponse.json(
+          { error: "Failed to create full lead", details: result, success: false },
+          { status }
+        );
       }
 
       return NextResponse.json({ success: true });
