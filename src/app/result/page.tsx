@@ -32,40 +32,57 @@ export default function ResultPage() {
     const lowValue = Math.round(zestimate * 0.92);
     const highValue = Math.round(zestimate * 1.08);
     
-    // Comparable Sales: slight random variation to simulate nearby sales
-    const comparableSalesMultiplier = 0.98 + (Math.random() * 0.04); // 0.98 to 1.02
-    const comparableSales = Math.round(zestimate * comparableSalesMultiplier);
+    // Gauge position: random between 30-70% (not always center)
+    const gaugePosition = 30 + Math.random() * 40; // 30% to 70%
     
-    // Home Details: based on condition
+    // Comparable Sales: random 0% to -10% lower
+    const comparableSalesPercent = -(Math.random() * 10); // -10% to 0%
+    const comparableSales = Math.round(zestimate * (1 + comparableSalesPercent / 100));
+    const nearbySalesCount = Math.floor(3 + Math.random() * 6); // 3 to 8 homes
+    
+    // Home Details: based on condition answer
     let conditionMultiplier = 1;
+    let conditionLabel = "Average";
     switch (formData.homeCondition) {
-      case "excellent": conditionMultiplier = 1.03; break;
-      case "good": conditionMultiplier = 1.00; break;
-      case "fair": conditionMultiplier = 0.97; break;
-      case "needs_work": conditionMultiplier = 0.94; break;
-      default: conditionMultiplier = 1.00;
+      case "excellent": 
+        conditionMultiplier = 1.03; 
+        conditionLabel = "Excellent";
+        break;
+      case "good": 
+        conditionMultiplier = 1.00; 
+        conditionLabel = "Good";
+        break;
+      case "fair": 
+        conditionMultiplier = 0.97; 
+        conditionLabel = "Fair";
+        break;
+      case "needs_work": 
+        conditionMultiplier = 0.94; 
+        conditionLabel = "Needs Work";
+        break;
+      default: 
+        conditionMultiplier = 1.00;
+        conditionLabel = "Average";
     }
     const homeDetailsValue = Math.round(zestimate * conditionMultiplier);
     
-    // Market Trends: based on timeline
-    let trendMultiplier = 1;
-    switch (formData.sellTimeline) {
-      case "asap": trendMultiplier = 0.98; break;
-      case "1_3_months": trendMultiplier = 1.00; break;
-      case "3_6_months": trendMultiplier = 1.01; break;
-      case "6_plus_months": trendMultiplier = 1.02; break;
-      default: trendMultiplier = 1.00;
-    }
-    const marketTrendsValue = Math.round(zestimate * trendMultiplier);
+    // Market Trends: random -3% to +4% with arrow direction
+    const trendPercent = -3 + Math.random() * 7; // -3% to +4%
+    const trendDirection = trendPercent > 0.5 ? "up" : trendPercent < -0.5 ? "down" : "stable";
     
     return {
       lowValue,
       highValue,
+      gaugePosition,
       comparableSales,
+      comparableSalesPercent,
+      nearbySalesCount,
       homeDetailsValue,
-      marketTrendsValue,
+      conditionLabel,
+      trendPercent,
+      trendDirection,
     };
-  }, [formData.zestimate, formData.homeCondition, formData.sellTimeline]);
+  }, [formData.zestimate, formData.homeCondition]);
 
   if (!formData.zestimate) {
     return (
@@ -137,9 +154,10 @@ export default function ResultPage() {
                 background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6)",
               }}
             />
-            {/* Market Value Indicator */}
+            {/* Market Value Indicator - random position */}
             <div 
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+              className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all"
+              style={{ left: `${calculations.gaugePosition}%` }}
             >
               <div className="w-6 h-6 bg-white border-4 border-gray-800 rounded-full shadow-lg" />
             </div>
@@ -180,7 +198,7 @@ export default function ResultPage() {
                 </svg>
               </div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">Comparable sales</h3>
-              <p className="text-xs text-gray-500 mb-2">Homes that sold nearby</p>
+              <p className="text-xs text-gray-500 mb-2">Based on {calculations.nearbySalesCount} nearby sales</p>
               <p className="text-lg font-bold text-blue-600">
                 {formatCurrency(calculations.comparableSales)}
               </p>
@@ -194,7 +212,7 @@ export default function ResultPage() {
                 </svg>
               </div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">Home details</h3>
-              <p className="text-xs text-gray-500 mb-2">The specifics of your home</p>
+              <p className="text-xs text-gray-500 mb-2">Condition: {calculations.conditionLabel}</p>
               <p className="text-lg font-bold text-green-600">
                 {formatCurrency(calculations.homeDetailsValue)}
               </p>
@@ -202,15 +220,32 @@ export default function ResultPage() {
 
             {/* Market Trends */}
             <div className="text-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                calculations.trendDirection === "up" ? "bg-green-100" : 
+                calculations.trendDirection === "down" ? "bg-red-100" : "bg-gray-100"
+              }`}>
+                {calculations.trendDirection === "up" ? (
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                ) : calculations.trendDirection === "down" ? (
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
+                  </svg>
+                )}
               </div>
               <h3 className="font-semibold text-gray-900 text-sm mb-1">Market trends</h3>
               <p className="text-xs text-gray-500 mb-2">Current market conditions</p>
-              <p className="text-lg font-bold text-purple-600">
-                {formatCurrency(calculations.marketTrendsValue)}
+              <p className={`text-lg font-bold flex items-center justify-center gap-1 ${
+                calculations.trendDirection === "up" ? "text-green-600" : 
+                calculations.trendDirection === "down" ? "text-red-600" : "text-gray-600"
+              }`}>
+                {calculations.trendDirection === "up" ? "↑" : calculations.trendDirection === "down" ? "↓" : "→"}
+                {calculations.trendPercent >= 0 ? "+" : ""}{calculations.trendPercent.toFixed(1)}%
               </p>
             </div>
           </div>
