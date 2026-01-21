@@ -52,11 +52,11 @@ export default function ContactPage() {
       const data = await response.json();
       console.log("📥 GHL full lead response:", data);
       
-      router.push("/result");
+      router.push("/calculating");
     } catch (error) {
       console.error("❌ Failed to create full lead:", error);
-      // Still proceed to results even if GHL fails
-      router.push("/result");
+      // Still proceed to calculating even if GHL fails
+      router.push("/calculating");
     }
   };
 
